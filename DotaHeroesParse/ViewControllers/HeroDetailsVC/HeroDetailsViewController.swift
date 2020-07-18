@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import UserNotifications
 
 class HeroDetailsViewController: UIViewController {
     //ImageView
@@ -21,6 +22,7 @@ class HeroDetailsViewController: UIViewController {
     //TableView
     @IBOutlet weak var tableView: UITableView!
     
+    let localNotification = UNUserNotificationCenter.current()
     var viewModel = HeroDetailsViewModel()
     
     override func viewDidLoad() {
@@ -30,6 +32,25 @@ class HeroDetailsViewController: UIViewController {
         self.setupLabels()
         self.setupProgress()
         self.setupTable()
+    }
+    
+    func sendNotification() {
+        guard let hero = self.viewModel.selectedHero, let name = hero.localized_name else { return }
+        
+        let content = UNMutableNotificationContent()
+        content.title = "Успешно выполнено"
+        content.body = "Вы успешно получили информацию о \(name)"
+        content.sound = .default
+        
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)
+        
+        let request = UNNotificationRequest(identifier: "SuccessGetHeroInfo", content: content, trigger: trigger)
+            
+        self.localNotification.add(request) { (error) in
+            if let error = error {
+                print(error.localizedDescription)
+            }
+        }
     }
     
     func setupImage() {
@@ -49,6 +70,9 @@ class HeroDetailsViewController: UIViewController {
             } else if let image = image {
                 DispatchQueue.main.async {
                     self.heroImage.image = image
+                    
+                    //Send push about success get hero info
+                    self.sendNotification()
                 }
             }
         }
