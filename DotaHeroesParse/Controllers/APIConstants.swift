@@ -12,4 +12,5 @@ class APIConstants {
     static let baseURL = "https://api.opendota.com"
     static let baseAPIURL = "https://api.opendota.com/api"
     static let getHeroesURL = "/heroStats"
+    static let getHeroTopPlayers = "/rankings?hero_id="
 }

@@ -32,6 +32,7 @@ class HeroDetailsViewController: UIViewController {
         self.setupLabels()
         self.setupProgress()
         self.setupTable()
+        self.setupNavigation()
     }
     
     func sendNotification() {
@@ -99,6 +100,17 @@ class HeroDetailsViewController: UIViewController {
         self.tableView.delegate = self
         self.tableView.dataSource = self
         self.tableView.tableFooterView = UIView()
+    }
+    
+    func setupNavigation() {
+        let topPlayersBtn = UIBarButtonItem(title: "Top", style: .plain, target: self, action: #selector(self.goToTopPlayers))
+        self.navigationItem.rightBarButtonItem = topPlayersBtn
+    }
+    
+    @objc func goToTopPlayers() {
+        let topPlayersVC = storyboard?.instantiateViewController(withIdentifier: "TopPlayersViewController") as! TopPlayersViewController
+        topPlayersVC.viewModel.selectedHeroId = self.viewModel.selectedHero?.id
+        self.navigationController?.pushViewController(topPlayersVC, animated: true)
     }
     
 }
