@@ -8,7 +8,7 @@
 
 import UIKit
 
-class MainScreenViewController: UIViewController {
+class MainScreenViewController: BaseController {
     //TableView
     @IBOutlet weak var tableView: UITableView!
     //Views
@@ -20,37 +20,43 @@ class MainScreenViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+        //Set screen title
         self.title = "Герои"
+        
+        //Start setup
         self.setupTableView()
-        self.getHeroes()
-    }
-    
-    func getHeroes() {
-        self.showHUD(load: true)
-        self.viewModel.getHeroes { [weak self] (heroes, error) in
-            self?.showHUD(load: false)
-            if let error = error {
-                DispatchQueue.main.async {
-                    let errorAlert = UIAlertController(title: "Ошибка", message: error.localizedDescription, preferredStyle: .alert)
-                    let okAction = UIAlertAction(title: "Хорошо", style: .default, handler: { tap in
-                        errorAlert.dismiss(animated: true, completion: nil)
-                    })
-                    
-                    errorAlert.addAction(okAction)
-                    self?.navigationController?.present(errorAlert, animated: true, completion: nil)
-                }
-            } else if let heroes = heroes {
-                DispatchQueue.main.async {
-                    self?.tableView.reloadData()
-                }
-            }
-        }
+        self.setupObservers()
+        
+        //Get heroes list
+        self.viewModel.getHeroes()
     }
     
     func setupTableView() {
         self.tableView.delegate = self
         self.tableView.dataSource = self
+    }
+    
+    func setupObservers() {
+        //Send true if need reload table
+        self.viewModel.needToReloadTable.observeNext { [weak self] (reload) in
+            if reload {
+                self?.tableView.reloadData()
+            }
+        }.dispose(in: self.reactive.bag)
+        
+        //HUD observer
+        self.viewModel.showHUD.observeNext { [weak self] (show) in
+            self?.showHUD(load: show)
+        }.dispose(in: self.reactive.bag)
+        
+        //Error observer
+        self.viewModel.errorMessage.observeNext { [weak self] (errorMessage) in
+            if !errorMessage.isEmpty {
+                self?.showAlert(title: "Ошибка", message: errorMessage, buttonName: "Хорошо") {
+                    //Add if need completion
+                }
+            }
+        }.dispose(in: self.reactive.bag)
     }
 }
 

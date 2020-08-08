@@ -8,22 +8,28 @@
 
 import Foundation
 import UIKit
+import Bond
+import ReactiveKit
 
-class HeroDetailsViewModel {
+class HeroDetailsViewModel: BaseViewModel {
     var selectedHero: Hero?
+    var imageData: Data?
     
-    func getHeroImage(completionHandler: @escaping (_ image: UIImage?, _ error: Error?) -> Void) {
-        guard let hero = self.selectedHero, let imageLink = hero.img, let url = URL(string: APIConstants.baseURL + imageLink) else { return }
+    func getHeroImage(completionHandler: @escaping () -> Void) {
+        guard let hero = self.selectedHero, let imageLink = hero.img?.replacingOccurrences(of: "?", with: "") else { return }
         
-        let session = URLSession.shared
+        self.showHUD.send(true)
         
-        session.dataTask(with: url) { (data, response, error) in
-            if let error = error {
-                completionHandler(nil, error)
-            } else if let data = data {
-                let image = UIImage(data: data)
-                completionHandler(image, nil)
+        NetworkManager.shared.getHeroImage(url: imageLink) { (data, error) in
+            if let data = data {
+                self.imageData = data
+                self.showHUD.send(false)
+                completionHandler()
+            } else if let error = error {
+                self.errorMessage.send(error)
+                self.showHUD.send(false)
+                completionHandler()
             }
-        }.resume()
+        }
     }
 }

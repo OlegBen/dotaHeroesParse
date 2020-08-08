@@ -8,37 +8,34 @@
 
 import Foundation
 import UIKit
+import Bond
+import ReactiveKit
 
-class TopPlayersViewModel {
+class TopPlayersViewModel: BaseViewModel {
     var selectedHeroId: Int?
     var players: [Player] = []
     var playersImage: [Int64: UIImage?] = [:]
+    var needToReloadCollection = Observable<Bool>(false)
     
-    func getTopPlayers(completionHandler: @escaping (_ players: [Player]?, _ error: Error?) -> Void) {
+    func getTopPlayers() {
         guard let heroId = self.selectedHeroId else { return }
-        let linkWithHeroId = APIConstants.getHeroTopPlayers + String(heroId)
-        let fullLink = APIConstants.baseAPIURL + linkWithHeroId
         
-        guard let url = URL(string: fullLink) else { return }
+        self.showHUD.send(true)
+        self.players.removeAll()
         
-        let session = URLSession.shared
-        session.dataTask(with: url) { (data, response, error) in
-            if let error = error {
-                completionHandler(nil, error)
-            } else if let data = data {
-                do {
-                    let playersContainer = try JSONDecoder().decode(TopPlayersContainer.self, from: data)
-                    if let players = playersContainer.rankings {
-                        self.players = players
-                        completionHandler(players, nil)
-                    } else {
-                        return
-                    }
-                } catch let error {
-                    completionHandler(nil, error)
-                }
+        NetworkManager.shared.getHeroPlayers(id: String(heroId)) { (topPlayers, errorMessage) in
+            if let error = errorMessage {
+                self.showHUD.send(false)
+                self.errorMessage.send(error)
             }
-        }.resume()
+            
+            if let playersContainer = topPlayers, let players = playersContainer.rankings {
+                self.showHUD.send(false)
+                self.players.insert(contentsOf: players, at: 0)
+            }
+            
+            self.needToReloadCollection.send(true)
+        }
     }
     
     func getPlayerImage(playerId: Int64?, completionHandler: @escaping (_ avatar: UIImage?) -> Void) {

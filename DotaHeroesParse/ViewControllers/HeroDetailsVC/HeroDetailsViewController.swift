@@ -9,7 +9,7 @@
 import UIKit
 import UserNotifications
 
-class HeroDetailsViewController: UIViewController {
+class HeroDetailsViewController: BaseController {
     //ImageView
     @IBOutlet weak var heroImage: UIImageView!
     //Label
@@ -28,6 +28,8 @@ class HeroDetailsViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        //Start setup
+        self.setupObservers()
         self.setupImage()
         self.setupLabels()
         self.setupProgress()
@@ -54,28 +56,33 @@ class HeroDetailsViewController: UIViewController {
         }
     }
     
-    func setupImage() {
-        self.showHUD(load: true)
-        self.viewModel.getHeroImage { (image, error) in
-            self.showHUD(load: false)
-            if let error = error {
-                DispatchQueue.main.async {
-                    let errorAlert = UIAlertController(title: "Ошибка", message: error.localizedDescription, preferredStyle: .alert)
-                    let okAction = UIAlertAction(title: "Хорошо", style: .default, handler: { tap in
-                        errorAlert.dismiss(animated: true, completion: nil)
-                    })
-                    
-                    errorAlert.addAction(okAction)
-                    self.navigationController?.present(errorAlert, animated: true, completion: nil)
-                }
-            } else if let image = image {
-                DispatchQueue.main.async {
-                    self.heroImage.image = image
-                    
-                    //Send push about success get hero info
-                    self.sendNotification()
-                }
+    func setupObservers() {
+        //HUD observer
+        self.viewModel.showHUD.observeNext { [weak self] (show) in
+            self?.showHUD(load: show)
+        }.dispose(in: self.reactive.bag)
+        
+        //Error observer
+        self.viewModel.errorMessage.observeNext { [weak self] (errorMessage) in
+            if !errorMessage.isEmpty {
+                self?.showAlert(title: "Ошибка", message: errorMessage, buttonName: "Хорошо", action: {
+                    //Add in need action
+                })
             }
+        }.dispose(in: self.reactive.bag)
+    }
+    
+    func setupImage() {
+        self.viewModel.getHeroImage {
+            guard let imageData = self.viewModel.imageData else { return }
+            
+            let image = UIImage(data: imageData)
+            
+            DispatchQueue.main.async {
+                self.heroImage.image = image
+            }
+            
+            self.sendNotification()
         }
     }
     
@@ -131,7 +138,7 @@ extension HeroDetailsViewController {
     }
 }
 
-//MARK:
+//MARK: UITableViewDelegate, UITableViewDataSource
 
 extension HeroDetailsViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {

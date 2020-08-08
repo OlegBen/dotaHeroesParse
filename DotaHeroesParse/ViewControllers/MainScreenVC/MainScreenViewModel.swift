@@ -8,55 +8,54 @@
 
 import Foundation
 import UIKit
+import Bond
+import ReactiveKit
 
-class MainScreenViewModel {
+class MainScreenViewModel: BaseViewModel {
+    //Dispatch group
     var dispatchGroup = DispatchGroup()
+    
+    //Heroes info
     var heroes: [Hero]?
     var heroesIcons: [Int: UIImage?] = [:]
     
-    func getHeroes(completionHandler: @escaping (_ heroes: [Hero]?, _ error: Error?) -> Void) {
-        let getHeroURL = APIConstants.baseAPIURL + APIConstants.getHeroesURL
+    //Observable variables
+    var needToReloadTable = Observable<Bool>(false)
+    
+    func getHeroes() {
+        self.showHUD.send(true)
         
-        guard let url = URL(string: getHeroURL) else { return }
-        
-        let session = URLSession.shared
-        
-        session.dataTask(with: url) { (data, response, error) in
-            if let error = error {
-                completionHandler(nil, error)
-            } else if let data = data {
-                do {
-                    let heroes = try JSONDecoder().decode([Hero].self, from: data)
-                    self.heroes = heroes
-                    
-                    heroes.forEach { (hero) in
-                        self.getIconFor(hero: hero)
-                    }
-                    
-                    self.dispatchGroup.notify(queue: .main) {
-                        completionHandler(heroes, nil)
-                    }
-                } catch let error {
-                    completionHandler(nil, error)
+        NetworkManager.shared.getHeroes { (heroes, errorMessage) in
+            if let heroes = heroes {
+                self.heroes = heroes
+
+                heroes.forEach { (hero) in
+                    self.getIconFor(hero: hero)
+                }
+
+                self.dispatchGroup.notify(queue: .main) {
+                    self.showHUD.send(false)
+                    self.needToReloadTable.send(true)
                 }
             }
-        }.resume()
-        
+            
+            if let errorMessage = errorMessage {
+                self.errorMessage.send(errorMessage)
+            }
+        }
     }
     
     func getIconFor(hero: Hero?) {
-        guard let hero = hero, let heroIconURL = hero.icon, let url = URL(string: APIConstants.baseURL + heroIconURL) else { return }
-        
-        let session = URLSession.shared
+        guard let hero = hero, let heroIconURL = hero.icon else { return }
         self.dispatchGroup.enter()
-        session.dataTask(with: url) { (data, response, error) in
+        
+        NetworkManager.shared.getHeroIcon(url: heroIconURL) { (data, error) in
             self.dispatchGroup.leave()
-            if let error = error {
-                print(error.localizedDescription)
-            } else if let data = data {
+            
+            if let data = data {
                 let image = UIImage(data: data)
                 self.heroesIcons[hero.id ?? 0] = image
             }
-        }.resume()
+        }
     }
 }

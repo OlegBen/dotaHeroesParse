@@ -8,7 +8,7 @@
 
 import UIKit
 
-class TopPlayersViewController: UIViewController {
+class TopPlayersViewController: BaseController {
     //CollectionView
     @IBOutlet weak var collectionView: UICollectionView!
     
@@ -17,30 +17,37 @@ class TopPlayersViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        //Start setup
         self.setupCollectionView()
+        self.setupObservers()
         
-        self.viewModel.getTopPlayers { (players, error) in
-            if let error = error {
-                DispatchQueue.main.async {
-                    let errorAlert = UIAlertController(title: "Ошибка", message: error.localizedDescription, preferredStyle: .alert)
-                    let okAction = UIAlertAction(title: "Хорошо", style: .default) { (action) in
-                        errorAlert.dismiss(animated: true, completion: nil)
-                    }
-                    
-                    errorAlert.addAction(okAction)
-                    self.navigationController?.present(errorAlert, animated: true, completion: nil)
-                }
-            } else if let players = players {
-                DispatchQueue.main.async {
-                    self.collectionView.reloadData()
-                }
-            }
-        }
+        //Get hero players
+        self.viewModel.getTopPlayers()
     }
     
     func setupCollectionView() {
         self.collectionView.delegate = self
         self.collectionView.dataSource = self
+    }
+    
+    func setupObservers() {
+        //Reload collection observe
+        self.viewModel.needToReloadCollection.observeNext { [weak self] (reload) in
+            if reload {
+                DispatchQueue.main.async {
+                    self?.collectionView.reloadData()
+                }
+            }
+        }.dispose(in: self.reactive.bag)
+        
+        //Error observe
+        self.viewModel.errorMessage.observeNext { [weak self] (errorMessage) in
+            if !errorMessage.isEmpty {
+                self?.showAlert(title: "Ошибка", message: errorMessage, buttonName: "Хорошо") {
+                    //Add if need action
+                }
+            }
+        }.dispose(in: self.reactive.bag)
     }
 
 }
