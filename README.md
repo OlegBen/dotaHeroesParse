@@ -1,2 +1,5 @@
 # Dota heroes parse
-Learn how to work with URLSession and many another things in project
+
+Application that show some heroes stats from Dota 2 game. 
+
+You can get hero top players list:
